@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workshop Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --kraft: #E4D8BE;
+    --kraft-deep: #D8C9A6;
+    --ink: #2B2620;
+    --ink-soft: #55493A;
+    --card: #FBF7EC;
+    --card-edge: #E9DFC8;
+    --orange: #C6511F;
+    --orange-deep: #8E3A16;
+    --blue: #33566C;
+    --blue-deep: #22394A;
+    --line: #C4B48D;
+    --danger: #A5402A;
+    --shadow: 0 2px 0 rgba(43,38,32,0.08), 0 8px 16px -8px rgba(43,38,32,0.25);
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin: 0;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 3px),
+      var(--kraft);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 32px 28px 60px;
+  }
+
+  header{
+    max-width: 1240px;
+    margin: 0 auto 30px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    border-bottom: 3px solid var(--ink);
+    padding-bottom: 16px;
+  }
+
+  .title-block h1{
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 34px;
+    letter-spacing: 0.5px;
+    margin: 0;
+    text-transform: uppercase;
+  }
+  .title-block p{
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+
+  .stamp{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--card);
+    background: var(--orange);
+    border: 2px solid var(--orange-deep);
+    padding: 8px 14px;
+    transform: rotate(-2deg);
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  .board{
+    max-width: 1240px;
+    margin: 0 auto;
+    display: flex;
+    gap: 22px;
+    align-items: flex-start;
+    overflow-x: auto;
+    padding-bottom: 20px;
+  }
+
+  .column{
+    background: var(--kraft-deep);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    width: 300px;
+    min-width: 300px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 200px);
+  }
+
+  .column.drag-over{
+    outline: 2px dashed var(--orange);
+    outline-offset: -4px;
+  }
+
+  .column-head{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 14px 10px;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .column-head h2{
+    font-family: 'Oswald', sans-serif;
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .col-count{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    background: var(--ink);
+    color: var(--kraft);
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 500;
+  }
+
+  .col-menu-btn, .add-col-btn, .col-delete{
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 2px 4px;
+  }
+  .col-menu-btn:hover, .col-delete:hover{ color: var(--danger); }
+
+  .card-list{
+    padding: 12px 12px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    min-height: 40px;
+  }
+
+  .card{
+    background: var(--card);
+    border: 1px solid var(--card-edge);
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    cursor: grab;
+    position: relative;
+    display: flex;
+    overflow: hidden;
+  }
+  .card:active{ cursor: grabbing; }
+  .card.dragging{ opacity: 0.35; }
+
+  .card-stub{
+    width: 34px;
+    flex-shrink: 0;
+    background: var(--blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-right: 2px dashed var(--kraft);
+  }
+  .card-stub::before, .card-stub::after{
+    content: "";
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--kraft-deep);
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .card-stub::before{ top: -5px; }
+  .card-stub::after{ bottom: -5px; }
+  .card-stub span{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--kraft);
+    writing-mode: vertical-rl;
+    letter-spacing: 1px;
+  }
+
+  .card-body{
+    padding: 12px 10px 12px 12px;
+    flex: 1;
+    min-width: 0;
+  }
+  .card-body p{
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--ink);
+    word-wrap: break-word;
+  }
+
+  .card-remove{
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    border: none;
+    background: none;
+    color: var(--ink-soft);
+    font-size: 15px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+    padding: 2px 4px;
+  }
+  .card:hover .card-remove{ opacity: 1; }
+  .card-remove:hover{ color: var(--danger); }
+
+  .add-card-form{
+    padding: 10px 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .add-card-form textarea{
+    resize: none;
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    min-height: 54px;
+  }
+  .add-card-form textarea:focus{
+    outline: none;
+    border-color: var(--orange);
+  }
+
+  .add-card-btn{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    background: var(--ink);
+    color: var(--kraft);
+    border: none;
+    border-radius: 4px;
+    padding: 9px 0;
+    cursor: pointer;
+  }
+  .add-card-btn:hover{ background: var(--orange-deep); }
+
+  .add-column{
+    width: 260px;
+    min-width: 260px;
+    flex-shrink: 0;
+  }
+  .add-column-btn{
+    width: 100%;
+    height: 52px;
+    border: 2px dashed var(--line);
+    background: transparent;
+    border-radius: 6px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .add-column-btn:hover{
+    border-color: var(--orange);
+    color: var(--orange-deep);
+  }
+
+  .new-col-form{
+    background: var(--kraft-deep);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .new-col-form input{
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+  }
+  .new-col-form input:focus{ outline: none; border-color: var(--orange); }
+  .new-col-actions{ display: flex; gap: 8px; }
+  .new-col-actions button{
+    flex: 1;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .new-col-actions .confirm{ background: var(--ink); color: var(--kraft); }
+  .new-col-actions .confirm:hover{ background: var(--orange-deep); }
+  .new-col-actions .cancel{ background: transparent; border: 1px solid var(--line); color: var(--ink-soft); }
+
+  .drop-slot{
+    height: 3px;
+    background: var(--orange);
+    border-radius: 2px;
+    margin: -4px 0;
+  }
+
+  .status-line{
+    max-width: 1240px;
+    margin: 18px auto 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+    letter-spacing: 0.4px;
+  }
+
+  ::-webkit-scrollbar{ width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb{ background: var(--line); border-radius: 4px; }
+  ::-webkit-scrollbar-track{ background: transparent; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-block">
+    <h1>Workshop board</h1>
+    <p>Signal cards for work in progress — drag to move, tap + to add</p>
+  </div>
+  <div class="stamp">NO. OF CARDS: <span id="totalCount">0</span></div>
+</header>
+
+<div class="board" id="board"></div>
+<div class="status-line" id="statusLine">Loading board&hellip;</div>
+
+<script>
+const STORAGE_KEY = 'kanban-board-state-v1';
+
+let state = null;
+let nextCardNum = 1;
+let dragged = null;
+
+const defaultState = () => ({
+  columns: [
+    { id: 'col-todo', title: 'To do', cards: [] },
+    { id: 'col-progress', title: 'In progress', cards: [] },
+    { id: 'col-done', title: 'Done', cards: [] }
+  ],
+  nextCardNum: 1
+});
+
+function uid(prefix){
+  return prefix + '-' + Math.random().toString(36).slice(2, 9);
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && Array.isArray(parsed.columns)){
+        return parsed;
+      }
+    }
+  }catch(e){
+    // no saved state yet, or it was corrupted
+  }
+  return defaultState();
+}
+
+function saveState(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    setStatus('Saved just now');
+  }catch(e){
+    setStatus('Could not save — changes may be lost on refresh');
+  }
+}
+
+function setStatus(msg){
+  document.getElementById('statusLine').textContent = msg;
+}
+
+function totalCards(){
+  return state.columns.reduce((sum, c) => sum + c.cards.length, 0);
+}
+
+function render(){
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+
+  state.columns.forEach(col => {
+    const colEl = document.createElement('div');
+    colEl.className = 'column';
+    colEl.dataset.colId = col.id;
+
+    colEl.addEventListener('dragover', e => {
+      e.preventDefault();
+      colEl.classList.add('drag-over');
+    });
+    colEl.addEventListener('dragleave', () => colEl.classList.remove('drag-over'));
+    colEl.addEventListener('drop', e => {
+      e.preventDefault();
+      colEl.classList.remove('drag-over');
+      handleDrop(col.id, e);
+    });
+
+    const head = document.createElement('div');
+    head.className = 'column-head';
+    head.innerHTML = `
+      <h2>${escapeHtml(col.title)} <span class="col-count">${col.cards.length}</span></h2>
+    `;
+    const delBtn = document.createElement('button');
+    delBtn.className = 'col-delete';
+    delBtn.title = 'Delete list';
+    delBtn.textContent = '\u2715';
+    delBtn.addEventListener('click', () => deleteColumn(col.id));
+    head.appendChild(delBtn);
+    colEl.appendChild(head);
+
+    const list = document.createElement('div');
+    list.className = 'card-list';
+
+    col.cards.forEach(card => {
+      list.appendChild(buildCardEl(col.id, card));
+    });
+
+    colEl.appendChild(list);
+
+    const form = document.createElement('div');
+    form.className = 'add-card-form';
+    const textarea = document.createElement('textarea');
+    textarea.placeholder = 'Describe the task\u2026';
+    const btn = document.createElement('button');
+    btn.className = 'add-card-btn';
+    btn.textContent = 'Add card';
+    btn.addEventListener('click', () => {
+      const text = textarea.value.trim();
+      if(!text) return;
+      addCard(col.id, text);
+      textarea.value = '';
+    });
+    textarea.addEventListener('keydown', e => {
+      if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        btn.click();
+      }
+    });
+    form.appendChild(textarea);
+    form.appendChild(btn);
+    colEl.appendChild(form);
+
+    board.appendChild(colEl);
+  });
+
+  board.appendChild(buildAddColumnEl());
+  document.getElementById('totalCount').textContent = totalCards();
+}
+
+function buildCardEl(colId, card){
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.draggable = true;
+  el.dataset.cardId = card.id;
+  el.dataset.colId = colId;
+
+  el.addEventListener('dragstart', e => {
+    dragged = { cardId: card.id, fromCol: colId };
+    el.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  el.addEventListener('dragend', () => {
+    el.classList.remove('dragging');
+    dragged = null;
+  });
+  el.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  el.addEventListener('drop', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleDrop(colId, e, card.id);
+  });
+
+  el.innerHTML = `
+    <div class="card-stub"><span>NO ${String(card.num).padStart(3,'0')}</span></div>
+    <div class="card-body"><p>${escapeHtml(card.text)}</p></div>
+  `;
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'card-remove';
+  removeBtn.textContent = '\u2715';
+  removeBtn.title = 'Remove card';
+  removeBtn.addEventListener('click', () => removeCard(colId, card.id));
+  el.appendChild(removeBtn);
+
+  return el;
+}
+
+function buildAddColumnEl(){
+  const wrap = document.createElement('div');
+  wrap.className = 'add-column';
+
+  const btn = document.createElement('button');
+  btn.className = 'add-column-btn';
+  btn.textContent = '+ Add list';
+  btn.addEventListener('click', () => {
+    wrap.innerHTML = '';
+    const form = document.createElement('div');
+    form.className = 'new-col-form';
+    const input = document.createElement('input');
+    input.placeholder = 'List name';
+    const actions = document.createElement('div');
+    actions.className = 'new-col-actions';
+    const confirm = document.createElement('button');
+    confirm.className = 'confirm';
+    confirm.textContent = 'Add';
+    const cancel = document.createElement('button');
+    cancel.className = 'cancel';
+    cancel.textContent = 'Cancel';
+    confirm.addEventListener('click', () => {
+      const name = input.value.trim();
+      if(!name) return;
+      addColumn(name);
+    });
+    input.addEventListener('keydown', e => {
+      if(e.key === 'Enter') confirm.click();
+    });
+    cancel.addEventListener('click', render);
+    actions.appendChild(confirm);
+    actions.appendChild(cancel);
+    form.appendChild(input);
+    form.appendChild(actions);
+    wrap.appendChild(form);
+    input.focus();
+  });
+
+  wrap.appendChild(btn);
+  return wrap;
+}
+
+function handleDrop(targetColId, e, beforeCardId){
+  if(!dragged) return;
+  const { cardId, fromCol } = dragged;
+  const fromColumn = state.columns.find(c => c.id === fromCol);
+  const cardIndex = fromColumn.cards.findIndex(c => c.id === cardId);
+  if(cardIndex === -1) return;
+  const [card] = fromColumn.cards.splice(cardIndex, 1);
+
+  const toColumn = state.columns.find(c => c.id === targetColId);
+  if(beforeCardId){
+    const idx = toColumn.cards.findIndex(c => c.id === beforeCardId);
+    toColumn.cards.splice(idx === -1 ? toColumn.cards.length : idx, 0, card);
+  } else {
+    toColumn.cards.push(card);
+  }
+
+  render();
+  saveState();
+}
+
+function addCard(colId, text){
+  const column = state.columns.find(c => c.id === colId);
+  column.cards.push({ id: uid('card'), text, num: state.nextCardNum });
+  state.nextCardNum += 1;
+  render();
+  saveState();
+}
+
+function removeCard(colId, cardId){
+  const column = state.columns.find(c => c.id === colId);
+  column.cards = column.cards.filter(c => c.id !== cardId);
+  render();
+  saveState();
+}
+
+function addColumn(title){
+  state.columns.push({ id: uid('col'), title, cards: [] });
+  render();
+  saveState();
+}
+
+function deleteColumn(colId){
+  const column = state.columns.find(c => c.id === colId);
+  if(column && column.cards.length > 0){
+    const ok = confirm(`Delete "${column.title}" and its ${column.cards.length} card(s)?`);
+    if(!ok) return;
+  }
+  state.columns = state.columns.filter(c => c.id !== colId);
+  render();
+  saveState();
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+(function init(){
+  state = loadState();
+  render();
+  setStatus('Board loaded — changes save automatically');
+})();
+</script>
+
+</body>
+</html>
